@@ -1,0 +1,644 @@
+package com.priyanka.updateproject;
+import javax.swing.*;
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.regex.Pattern;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
+public class Updateproject {
+    private static class Account {
+        long accountNumber;
+        String name;
+        String fatherName;
+        String motherName;
+        String phone;
+        String address;
+        String nid;
+        String dob;
+        double balance;
+        boolean isStudent;
+
+        Account(long accountNumber, String name, String fatherName, String motherName,
+                String phone, String address, String nid, String dob, double balance, boolean isStudent) {
+            this.accountNumber = accountNumber;
+            this.name = name;
+            this.fatherName = fatherName;
+            this.motherName = motherName;
+            this.phone = phone;
+            this.address = address;
+            this.nid = nid;
+            this.dob = dob;
+            this.balance = balance;
+            this.isStudent = isStudent;
+        }
+    }
+
+    private static class Transaction {
+        long accountNumber;
+        String type;
+        double amount;
+        String timestamp;
+
+        Transaction(long accountNumber, String type, double amount, String timestamp) {
+            this.accountNumber = accountNumber;
+            this.type = type;
+            this.amount = amount;
+            this.timestamp = timestamp;
+        }
+    }
+
+    private static class AuditLog {
+        String timestamp;
+        String action;
+        long accountNumber;
+
+        AuditLog(String timestamp, String action, long accountNumber) {
+            this.timestamp = timestamp;
+            this.action = action;
+            this.accountNumber = accountNumber;
+        }
+    }
+
+    private static ArrayList<Account> accounts = new ArrayList<>();
+    private static ArrayList<Transaction> transactions = new ArrayList<>();
+    private static ArrayList<AuditLog> auditLogs = new ArrayList<>();
+    private static long nextAccountNumber = 1;
+
+    private static JFrame frame;
+    private static JPanel loginPanel, mainPanel;
+    private static JTextField usernameField, accountNumberField, amountField;
+    private static JPasswordField passwordField;
+    private static JTextArea outputArea;
+    private static JTextField nameField, fatherNameField, motherNameField, phoneField, addressField, nidField, dobField, balanceField;
+    private static JCheckBox studentCheckBox;
+    private static int loginAttempts = 0;
+
+    private static final Color BANK_BLUE = new Color(0, 102, 204); 
+    private static final Color BANK_WHITE = new Color(255, 255, 255); 
+    private static final Color BANK_GOLD = new Color(255, 204, 0); 
+
+    private static boolean isInteger(String str) {
+        return Pattern.matches("\\d+", str);
+    }
+
+    private static boolean isFloat(String str) {
+        return Pattern.matches("\\d*\\.?\\d+", str);
+    }
+
+    private static boolean isAlphabeticWithSpaces(String str) {
+        return Pattern.matches("[a-zA-Z ]+", str);
+    }
+
+    private static boolean validateDOB(String dob) {
+        if (!Pattern.matches("\\d{2}-\\d{2}-\\d{4}", dob)) return false;
+        String[] parts = dob.split("-");
+        int day = Integer.parseInt(parts[0]);
+        int month = Integer.parseInt(parts[1]);
+        int year = Integer.parseInt(parts[2]);
+        if (year < 1900 || year > 2007) return false;
+        if (month < 1 || month > 12) return false;
+        int maxDay;
+        switch (month) {
+            case 2: maxDay = 28; break;
+            case 4: case 6: case 9: case 11: maxDay = 30; break;
+            default: maxDay = 31;
+        }
+        return day >= 1 && day <= maxDay;
+    }
+
+    private static boolean validateNID(String nid) {
+        return isInteger(nid) && nid.length() == 10;
+    }
+
+    private static boolean validatePhone(String phone) {
+        return isInteger(phone) && phone.length() == 11 && phone.startsWith("01");
+    }
+
+    private static String getCurrentTimestamp() {
+        return String.valueOf(System.currentTimeMillis());
+    }
+
+    private static void addAuditLog(String action, long accountNumber) {
+        auditLogs.add(new AuditLog(getCurrentTimestamp(), action, accountNumber));
+    }
+
+    private static void createAccount() {
+        String name = nameField.getText();
+        String fatherName = fatherNameField.getText();
+        String motherName = motherNameField.getText();
+        String phone = phoneField.getText();
+        String address = addressField.getText();
+        String nid = nidField.getText();
+        String dob = dobField.getText();
+        String balanceStr = balanceField.getText();
+        boolean isStudent = studentCheckBox.isSelected();
+
+        if (!isAlphabeticWithSpaces(name) || !isAlphabeticWithSpaces(fatherName) || !isAlphabeticWithSpaces(motherName)) {
+            outputArea.setText("Invalid name input. Use letters and spaces only.");
+            return;
+        }
+        if (!validatePhone(phone)) {
+            outputArea.setText("Invalid phone number. Must be 11 digits starting with 01.");
+            return;
+        }
+        if (!validateNID(nid)) {
+            outputArea.setText("Invalid NID. Must be exactly 10 digits.");
+            return;
+        }
+        if (!validateDOB(dob)) {
+            outputArea.setText("Invalid date format or impossible date (DD-MM-YYYY).");
+            return;
+        }
+        if (!isFloat(balanceStr)) {
+            outputArea.setText("Invalid balance. Enter a valid number.");
+            return;
+        }
+
+        double balance = Double.parseDouble(balanceStr);
+        accounts.add(new Account(nextAccountNumber, name, fatherName, motherName, phone, address, nid, dob, balance, isStudent));
+        outputArea.setText("Account created successfully. Account Number: " + nextAccountNumber);
+        addAuditLog("Account created", nextAccountNumber);
+        nextAccountNumber++;
+        clearInputFields();
+    }
+
+    private static void updateAccount() {
+        try {
+            long accountNumber = Long.parseLong(accountNumberField.getText());
+            Account account = null;
+            for (Account acc : accounts) {
+                if (acc.accountNumber == accountNumber) {
+                    account = acc;
+                    break;
+                }
+            }
+            if (account == null) {
+                outputArea.setText("Account not found.");
+                return;
+            }
+
+            String name = nameField.getText();
+            String fatherName = fatherNameField.getText();
+            String motherName = motherNameField.getText();
+            String phone = phoneField.getText();
+            String address = addressField.getText();
+            String dob = dobField.getText();
+
+            if (!name.isEmpty() && isAlphabeticWithSpaces(name)) account.name = name;
+            if (!fatherName.isEmpty() && isAlphabeticWithSpaces(fatherName)) account.fatherName = fatherName;
+            if (!motherName.isEmpty() && isAlphabeticWithSpaces(motherName)) account.motherName = motherName;
+            if (!phone.isEmpty() && validatePhone(phone)) account.phone = phone;
+            if (!address.isEmpty() && isAlphabeticWithSpaces(address)) account.address = address;
+            if (!dob.isEmpty() && validateDOB(dob)) account.dob = dob;
+
+            addAuditLog("Account updated", accountNumber);
+            outputArea.setText("Account updated successfully.");
+            clearInputFields();
+        } catch (NumberFormatException e) {
+            outputArea.setText("Invalid account number.");
+        }
+    }
+
+    private static void deposit() {
+        try {
+            long accountNumber = Long.parseLong(accountNumberField.getText());
+            double amount = Double.parseDouble(amountField.getText());
+            Account account = null;
+            for (Account acc : accounts) {
+                if (acc.accountNumber == accountNumber) {
+                    account = acc;
+                    break;
+                }
+            }
+            if (account == null) {
+                outputArea.setText("Account not found.");
+                return;
+            }
+            account.balance += amount;
+            transactions.add(new Transaction(accountNumber, "Deposit", amount, getCurrentTimestamp()));
+            addAuditLog("Deposit", accountNumber);
+            outputArea.setText("Deposit successful.");
+            clearInputFields();
+        } catch (NumberFormatException e) {
+            outputArea.setText("Invalid input for account number or amount.");
+        }
+    }
+
+    private static void withdraw() {
+        try {
+            long accountNumber = Long.parseLong(accountNumberField.getText());
+            double amount = Double.parseDouble(amountField.getText());
+            Account account = null;
+            for (Account acc : accounts) {
+                if (acc.accountNumber == accountNumber) {
+                    account = acc;
+                    break;
+                }
+            }
+            if (account == null) {
+                outputArea.setText("Account not found.");
+                return;
+            }
+            if (account.balance < amount) {
+                outputArea.setText("Insufficient funds.");
+                return;
+            }
+            account.balance -= amount;
+            transactions.add(new Transaction(accountNumber, "Withdrawal", amount, getCurrentTimestamp()));
+            addAuditLog("Withdrawal", accountNumber);
+            outputArea.setText("Withdrawal successful.");
+            clearInputFields();
+        } catch (NumberFormatException e) {
+            outputArea.setText("Invalid input for account number or amount.");
+        }
+    }
+
+    private static void checkBalance() {
+        try {
+            long accountNumber = Long.parseLong(accountNumberField.getText());
+            Account account = null;
+            for (Account acc : accounts) {
+                if (acc.accountNumber == accountNumber) {
+                    account = acc;
+                    break;
+                }
+            }
+            if (account == null) {
+                outputArea.setText("Account not found.");
+                return;
+            }
+            outputArea.setText("Account Holder: " + account.name + "\nCurrent Balance: " + String.format("%.2f", account.balance) + "\nStudent: " + (account.isStudent ? "Yes" : "No"));
+            addAuditLog("Balance checked", accountNumber);
+            clearInputFields();
+        } catch (NumberFormatException e) {
+            outputArea.setText("Invalid account number.");
+        }
+    }
+
+    private static void viewTransactions() {
+        try {
+            long accountNumber = Long.parseLong(accountNumberField.getText());
+            StringBuilder result = new StringBuilder("Last 10 transactions:\n");
+            int count = 0;
+            for (int i = transactions.size() - 1; i >= 0 && count < 10; i--) {
+                Transaction trans = transactions.get(i);
+                if (trans.accountNumber == accountNumber) {
+                    result.append(String.format("%s | %s | %.2f%n", trans.timestamp, trans.type, trans.amount));
+                    count++;
+                }
+            }
+            addAuditLog("Transactions viewed", accountNumber);
+            outputArea.setText(result.toString());
+            clearInputFields();
+        } catch (NumberFormatException e) {
+            outputArea.setText("Invalid account number.");
+        }
+    }
+
+    private static void deleteAccount() {
+        try {
+            long accountNumber = Long.parseLong(accountNumberField.getText());
+            Account account = null;
+            for (Account acc : accounts) {
+                if (acc.accountNumber == accountNumber) {
+                    account = acc;
+                    break;
+                }
+            }
+            if (account == null) {
+                outputArea.setText("Account not found.");
+                return;
+            }
+            accounts.remove(account);
+            outputArea.setText("Account deleted successfully.");
+            addAuditLog("Account deleted", accountNumber);
+            clearInputFields();
+        } catch (NumberFormatException e) {
+            outputArea.setText("Invalid account number.");
+        }
+    }
+
+    private static void displayAllAccounts() {
+        StringBuilder result = new StringBuilder("All Accounts:\nAccount Number\tName\t\tBalance\t\tStudent\n----------------------------------------\n");
+        for (Account acc : accounts) {
+            result.append(String.format("%-15d%-20s%.2f\t\t%s%n", acc.accountNumber, acc.name, acc.balance, acc.isStudent ? "Yes" : "No"));
+        }
+        addAuditLog("Viewed all accounts", 0);
+        outputArea.setText(result.toString());
+    }
+
+    private static void viewAudit() {
+        StringBuilder result = new StringBuilder("Last 20 Audit Logs:\nTimestamp\t\tAction\t\tAccount Number\n--------------------------------------------------\n");
+        for (int i = Math.max(0, auditLogs.size() - 20); i < auditLogs.size(); i++) {
+            AuditLog log = auditLogs.get(i);
+            result.append(String.format("%-20s%-20s%d%n", log.timestamp, log.action, log.accountNumber));
+        }
+        outputArea.setText(result.toString());
+    }
+
+    private static void clearInputFields() {
+        accountNumberField.setText("");
+        amountField.setText("");
+        nameField.setText("");
+        fatherNameField.setText("");
+        motherNameField.setText("");
+        phoneField.setText("");
+        addressField.setText("");
+        nidField.setText("");
+        dobField.setText("");
+        balanceField.setText("");
+        studentCheckBox.setSelected(false);
+    }
+    
+    private static void createLoginPanel() {
+        loginPanel = new JPanel(new GridBagLayout());
+        loginPanel.setBackground(BANK_BLUE);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+
+        JLabel titleLabel = new JLabel("Bank Management System");
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
+        titleLabel.setForeground(BANK_WHITE);
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.gridwidth = 2;
+        loginPanel.add(titleLabel, gbc);
+
+        JLabel usernameLabel = new JLabel("Username:");
+        usernameLabel.setForeground(BANK_WHITE);
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.gridwidth = 1;
+        loginPanel.add(usernameLabel, gbc);
+
+        usernameField = new JTextField(15);
+        gbc.gridx = 1;
+        gbc.gridy = 1;
+        loginPanel.add(usernameField, gbc);
+
+        JLabel passwordLabel = new JLabel("Password:");
+        passwordLabel.setForeground(BANK_WHITE);
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        loginPanel.add(passwordLabel, gbc);
+
+        passwordField = new JPasswordField(15);
+        gbc.gridx = 1;
+        gbc.gridy = 2;
+        loginPanel.add(passwordField, gbc);
+
+        JButton loginButton = new JButton("Login");
+        loginButton.setBackground(BANK_GOLD);
+        loginButton.setForeground(BANK_BLUE);
+        loginButton.addActionListener(e -> {
+            String username = usernameField.getText();
+            String password = new String(passwordField.getPassword());
+            if (username.equals("priyanka12$") && password.equals("Priyanka12$$")) {
+                frame.getContentPane().removeAll();
+                frame.add(mainPanel);
+                frame.revalidate();
+                frame.repaint();
+                outputArea.setText("Login successful!");
+            } else {
+                loginAttempts++;
+                if (loginAttempts >= 3) {
+                    outputArea.setText("Too many failed attempts. Exiting.");
+                    System.exit(0);
+                } else {
+                    outputArea.setText("Invalid credentials! Attempts left: " + (3 - loginAttempts));
+                }
+            }
+        });
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        gbc.gridwidth = 2;
+        loginPanel.add(loginButton, gbc);
+
+        outputArea = new JTextArea(5, 20);
+        outputArea.setEditable(false);
+        outputArea.setBackground(BANK_WHITE);
+        outputArea.setForeground(BANK_BLUE);
+        gbc.gridx = 0;
+        gbc.gridy = 4;
+        gbc.gridwidth = 2;
+        loginPanel.add(new JScrollPane(outputArea), gbc);
+    }
+    private static void createMainPanel() {
+        mainPanel = new JPanel(new BorderLayout());
+        mainPanel.setBackground(BANK_WHITE);
+
+        JPanel inputPanel = new JPanel(new GridBagLayout());
+        inputPanel.setBackground(BANK_WHITE);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+
+        JLabel studentLabel = new JLabel("Student:");
+        studentLabel.setForeground(BANK_BLUE);
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        inputPanel.add(studentLabel, gbc);
+
+        studentCheckBox = new JCheckBox();
+        gbc.gridx = 1;
+        gbc.gridy = 0;
+        inputPanel.add(studentCheckBox, gbc);
+
+        JLabel accountNumberLabel = new JLabel("Account Number:");
+        accountNumberLabel.setForeground(BANK_BLUE);
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        inputPanel.add(accountNumberLabel, gbc);
+
+        accountNumberField = new JTextField(10);
+        gbc.gridx = 1;
+        gbc.gridy = 1;
+        inputPanel.add(accountNumberField, gbc);
+
+        JLabel amountLabel = new JLabel("Amount:");
+        amountLabel.setForeground(BANK_BLUE);
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        inputPanel.add(amountLabel, gbc);
+
+        amountField = new JTextField(10);
+        gbc.gridx = 1;
+        gbc.gridy = 2;
+        inputPanel.add(amountField, gbc);
+
+        JLabel nameLabel = new JLabel("Name:");
+        nameLabel.setForeground(BANK_BLUE);
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        inputPanel.add(nameLabel, gbc);
+
+        nameField = new JTextField(10);
+        gbc.gridx = 1;
+        gbc.gridy = 3;
+        inputPanel.add(nameField, gbc);
+
+        JLabel fatherNameLabel = new JLabel("Father's Name:");
+        fatherNameLabel.setForeground(BANK_BLUE);
+        gbc.gridx = 0;
+        gbc.gridy = 4;
+        inputPanel.add(fatherNameLabel, gbc);
+
+        fatherNameField = new JTextField(10);
+        gbc.gridx = 1;
+        gbc.gridy = 4;
+        inputPanel.add(fatherNameField, gbc);
+
+        JLabel motherNameLabel = new JLabel("Mother's Name:");
+        motherNameLabel.setForeground(BANK_BLUE);
+        gbc.gridx = 0;
+        gbc.gridy = 5;
+        inputPanel.add(motherNameLabel, gbc);
+
+        motherNameField = new JTextField(10);
+        gbc.gridx = 1;
+        gbc.gridy = 5;
+        inputPanel.add(motherNameField, gbc);
+
+        JLabel phoneLabel = new JLabel("Phone:");
+        phoneLabel.setForeground(BANK_BLUE);
+        gbc.gridx = 0;
+        gbc.gridy = 6;
+        inputPanel.add(phoneLabel, gbc);
+
+        phoneField = new JTextField(10);
+        gbc.gridx = 1;
+        gbc.gridy = 6;
+        inputPanel.add(phoneField, gbc);
+
+        JLabel addressLabel = new JLabel("Address:");
+        addressLabel.setForeground(BANK_BLUE);
+        gbc.gridx = 0;
+        gbc.gridy = 7;
+        inputPanel.add(addressLabel, gbc);
+
+        addressField = new JTextField(10);
+        gbc.gridx = 1;
+        gbc.gridy = 7;
+        inputPanel.add(addressField, gbc);
+
+        JLabel nidLabel = new JLabel("NID:");
+        nidLabel.setForeground(BANK_BLUE);
+        gbc.gridx = 0;
+        gbc.gridy = 8;
+        inputPanel.add(nidLabel, gbc);
+
+        nidField = new JTextField(10);
+        gbc.gridx = 1;
+        gbc.gridy = 8;
+        inputPanel.add(nidField, gbc);
+
+        JLabel dobLabel = new JLabel("DOB (DD-MM-YYYY):");
+        dobLabel.setForeground(BANK_BLUE);
+        gbc.gridx = 0;
+        gbc.gridy = 9;
+        inputPanel.add(dobLabel, gbc);
+
+        dobField = new JTextField(10);
+        gbc.gridx = 1;
+        gbc.gridy = 9;
+        inputPanel.add(dobField, gbc);
+
+        JLabel balanceLabel = new JLabel("Initial Balance:");
+        balanceLabel.setForeground(BANK_BLUE);
+        gbc.gridx = 0;
+        gbc.gridy = 10;
+        inputPanel.add(balanceLabel, gbc);
+
+        balanceField = new JTextField(10);
+        gbc.gridx = 1;
+        gbc.gridy = 10;
+        inputPanel.add(balanceField, gbc);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout());
+        buttonPanel.setBackground(BANK_BLUE);
+
+        JButton createButton = new JButton("Create Account");
+        createButton.setBackground(BANK_GOLD);
+        createButton.setForeground(BANK_BLUE);
+        createButton.addActionListener(e -> createAccount());
+        buttonPanel.add(createButton);
+
+        JButton depositButton = new JButton("Deposit");
+        depositButton.setBackground(BANK_GOLD);
+        depositButton.setForeground(BANK_BLUE);
+        depositButton.addActionListener(e -> deposit());
+        buttonPanel.add(depositButton);
+
+        JButton withdrawButton = new JButton("Withdraw");
+        withdrawButton.setBackground(BANK_GOLD);
+        withdrawButton.setForeground(BANK_BLUE);
+        withdrawButton.addActionListener(e -> withdraw());
+        buttonPanel.add(withdrawButton);
+
+        JButton balanceButton = new JButton("Check Balance");
+        balanceButton.setBackground(BANK_GOLD);
+        balanceButton.setForeground(BANK_BLUE);
+        balanceButton.addActionListener(e -> checkBalance());
+        buttonPanel.add(balanceButton);
+
+        JButton transactionsButton = new JButton("View Transactions");
+        transactionsButton.setBackground(BANK_GOLD);
+        transactionsButton.setForeground(BANK_BLUE);
+        transactionsButton.addActionListener(e -> viewTransactions());
+        buttonPanel.add(transactionsButton);
+
+        JButton updateButton = new JButton("Update Account");
+        updateButton.setBackground(BANK_GOLD);
+        updateButton.setForeground(BANK_BLUE);
+        updateButton.addActionListener(e -> updateAccount());
+        buttonPanel.add(updateButton);
+
+        JButton auditButton = new JButton("View Audit Logs");
+        auditButton.setBackground(BANK_GOLD);
+        auditButton.setForeground(BANK_BLUE);
+        auditButton.addActionListener(e -> viewAudit());
+        buttonPanel.add(auditButton);
+
+        JButton deleteButton = new JButton("Delete Account");
+        deleteButton.setBackground(BANK_GOLD);
+        deleteButton.setForeground(BANK_BLUE);
+        deleteButton.addActionListener(e -> deleteAccount());
+        buttonPanel.add(deleteButton);
+
+        JButton allAccountsButton = new JButton("All Accounts");
+        allAccountsButton.setBackground(BANK_GOLD);
+        allAccountsButton.setForeground(BANK_BLUE);
+        allAccountsButton.addActionListener(e -> displayAllAccounts());
+        buttonPanel.add(allAccountsButton);
+        
+        JButton exitButton = new JButton("Exit");
+        exitButton.setBackground(BANK_GOLD);
+        exitButton.setForeground(BANK_BLUE);
+        exitButton.addActionListener(e -> System.exit(0));
+        buttonPanel.add(exitButton);
+
+        outputArea = new JTextArea(10, 50);
+        outputArea.setEditable(false);
+        outputArea.setBackground(BANK_WHITE);
+        outputArea.setForeground(BANK_BLUE);
+        JScrollPane scrollPane = new JScrollPane(outputArea);
+        mainPanel.add(inputPanel, BorderLayout.WEST);
+        mainPanel.add(buttonPanel, BorderLayout.NORTH);
+        mainPanel.add(scrollPane, BorderLayout.CENTER);
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            frame = new JFrame("Bank Management System");
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.setSize(800, 600);
+            frame.setLocationRelativeTo(null);
+
+            createLoginPanel();
+            createMainPanel();
+
+            frame.add(loginPanel);
+            frame.setVisible(true);
+        });
+    }
+}
